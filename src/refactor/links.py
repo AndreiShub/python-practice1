@@ -1,10 +1,8 @@
-import datetime
-from datetime import date
-
+from datetime import datetime, date
 from bs4 import BeautifulSoup
+import logging
 
-
-def parse_page_links(html: str, start_date: date, end_date: date, url: str):
+def parse_page_links(html: str, start_date: date, end_date: date) -> list[tuple[str, date]]:
     """
     Парсит ссылки на бюллетени с одной страницы:
     <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20240101_test.xls">link1</a>
@@ -22,15 +20,18 @@ def parse_page_links(html: str, start_date: date, end_date: date, url: str):
         if "/upload/reports/oil_xls/oil_xls_" not in href or not href.endswith(".xls"):
             continue
 
-        try:
-            date = href.split("oil_xls_")[1][:8]
-            file = datetime.datetime.strptime(date, "%Y%m%d").date()
-            if start_date <= file <= end_date:
-                u = href if href.startswith("http") else f"https://spimex.com{href}"
-                results.append((u, file))
-            else:
-                print(f"Ссылка {href} вне диапазона дат")
-        except Exception as e:
-            print(f"Не удалось извлечь дату из ссылки {href}: {e}")
+        date_str = href.split("oil_xls_")[1][:8]
+        try: 
+            file_date = datetime.strptime(date_str, "%Y%m%d").date()
+        except ValueError:
+            logging.warning(f"Некорректная дата в ссылке: {href}")
+            continue
+        
+        if start_date <= file_date <= end_date:
+            full_url = href if href.startswith("http") else f"https://spimex.com{href}"
+            results.append((full_url, file_date))
+        else:
+            logging.debug(f"Ссылка {href} вне диапазона дат")
+
 
     return results
